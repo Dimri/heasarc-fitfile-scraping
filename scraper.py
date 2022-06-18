@@ -13,6 +13,7 @@ driver.maximize_window()
 
 df = pd.read_csv('gbmdatacleaned.csv', index_col=0)
 
+# indices of GRBs to download
 reqdidx = set()
 
 grbnames = []
