@@ -1,4 +1,8 @@
+#OS Junk
+.DS_Store
 #Jupyter Notebook Junk
 .ipynb_checkpoints
 __pycache__
+#Jupyter Notebooks
 *.ipynb
+
