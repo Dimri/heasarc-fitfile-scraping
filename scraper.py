@@ -1,49 +1,88 @@
 import time
+
+from pathlib import Path
 from selenium import webdriver
-import pandas as pd
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from utils.estimate_source_angles_detectors import angle_to_grb
+from grb import GRB
 
-import estimate_source_angles_detectors as esad
+PATH_TO_CHROME_DRIVER = r"/Downloads/chromedriver"  # Path to ChromeDriver
+DOWNLOAD_PATH = r"C:\Users\hhsud\Downloads\GRB"  # Download directory
 
-PATH = '/Downloads/chromedriver' # PATH to ChromeDriver
-ser = Service(PATH)
-driver = webdriver.Chrome(service=ser)
-driver.maximize_window()
 
-df = pd.read_csv('gbmdatacleaned.csv', index_col=0)
+def initialize():
+    chrome_options = webdriver.ChromeOptions()
+    prefs = {"download.default_directory": DOWNLOAD_PATH}
+    chrome_options.add_argument("log-level=3")
+    chrome_options.add_experimental_option("prefs", prefs)
+    ser = Service(PATH_TO_CHROME_DRIVER)
+    driver = webdriver.Chrome(service=ser, options=chrome_options)
+    driver.maximize_window()
+    return driver
 
-# indices of GRBs to download
-reqdidx = set()
 
-grbnames = []
-ra = []
-dec = []
-year = []
+driver = initialize()
 
-# populate array with apt info
-for i in reqdidx:
-    grbnames.append(df.iloc[i]['name'])
-    ra.append(df.iloc[i]['ra_val'])
-    dec.append(df.iloc[i]['dec_val'])
-    year.append(df.iloc[i]['trigger_time'][:4])
 
-# download trigdat_all file    
-for i in range(len(ra)):
-    ADDRESS = 'https://heasarc.gsfc.nasa.gov/FTP/fermi/data/gbm/triggers/' + year[i] + '/bn' + grbnames[i][3:] + '//current/'
-    driver.get(ADDRESS)
-    time.sleep(0.5)
-    link = driver.find_element(By.PARTIAL_LINK_TEXT, value='glg_trigdat_all_bn' + grbnames[i][3:])
+def download(link):
+    # check if file is present
+    path = Path(DOWNLOAD_PATH) / link.text
+    if path.exists():
+        print(f"{link.text} already downloaded!")
+        return
+
     # download
     link.click()
+    # wait for file to downloaded
+    while not path.exists():
+        time.sleep(0.5)
+    print(f"Downloaded : {link.text}")
 
-# download fitfile corresponding to brightest detector    
-for i in range(len(ra)):
-    ADDRESS = 'https://heasarc.gsfc.nasa.gov/FTP/fermi/data/gbm/triggers/' + year[i] + '/bn' + grbnames[i][3:] + '//current/'
-    driver.get(ADDRESS)
+
+def get_address(grb):
+    return f"https://heasarc.gsfc.nasa.gov/FTP/fermi/data/gbm/triggers/{grb.year}/bn{grb.number}//current/"
+
+
+def download_trigdat_files(grb):
+    # open site
+    driver.get(get_address(grb))
+    # wait for site loading
     time.sleep(0.5)
-    link = driver.find_element(By.PARTIAL_LINK_TEXT, value='glg_trigdat_all_bn' + grbnames[i][3:])
+    # link contains grb number
+    link = driver.find_element(
+        By.PARTIAL_LINK_TEXT, value=f"glg_trigdat_all_bn{grb.number}"
+    )
+    # download the file
+    download(link)
+
+
+def download_fitfile(grb):
+    # open site
+    driver.get(get_address(grb))
+    # wait for site loading
+    time.sleep(0.5)
+    link = driver.find_element(
+        By.PARTIAL_LINK_TEXT, value="glg_trigdat_all_bn" + grb.number
+    )
     # brightest detector name
-    b = esad.angle_to_grb(ra[i], dec[i], '/Users/dimrisudhanshu/Downloads/' + link.text)
+    b = angle_to_grb(grb.ra, grb.dec, f"{DOWNLOAD_PATH}/{link.text}")
     # download
-    driver.find_element(By.PARTIAL_LINK_TEXT, value='glg_tte_' + b[0]).click() 
+    link2 = driver.find_element(By.PARTIAL_LINK_TEXT, value="glg_tte_" + b[0])
+    download(link2)
+
+
+def main():
+    # names of GRB files to download
+    grb_names = ["GRB120403857", "GRB120227725", "GRB141205018"]
+    for name in grb_names:
+        grb = GRB(name)
+        print(grb)
+        # download trigdat_all file
+        download_trigdat_files(grb)
+        # download fitfile corresponding to the brightest detector
+        download_fitfile(grb)
+
+
+if __name__ == "__main__":
+    main()
