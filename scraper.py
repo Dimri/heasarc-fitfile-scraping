@@ -55,20 +55,17 @@ def download_trigdat_files(grb):
     )
     # download the file
     download(link)
+    return link.text
 
 
-def download_fitfile(grb):
-    # open site
-    driver.get(get_address(grb))
-    # wait for site loading
-    time.sleep(0.5)
-    link = driver.find_element(
-        By.PARTIAL_LINK_TEXT, value="glg_trigdat_all_bn" + grb.number
-    )
-    # brightest detector name
-    b = angle_to_grb(grb.ra, grb.dec, f"{DOWNLOAD_PATH}/{link.text}")
+def download_fitfile(grb, filename):
+    # name of the brightest detector is the first value of the returned tuple
+    brightest_detector = angle_to_grb(grb.ra, grb.dec, f"{DOWNLOAD_PATH}/{filename}")
+
     # download
-    link2 = driver.find_element(By.PARTIAL_LINK_TEXT, value="glg_tte_" + b[0])
+    link2 = driver.find_element(
+        By.PARTIAL_LINK_TEXT, value=f"glg_tte_{brightest_detector[0]}"
+    )
     download(link2)
 
 
@@ -78,10 +75,10 @@ def main():
     for name in grb_names:
         grb = GRB(name)
         print(grb)
-        # download trigdat_all file
-        download_trigdat_files(grb)
+        # download trigdat_all file and return the filename
+        filename = download_trigdat_files(grb)
         # download fitfile corresponding to the brightest detector
-        download_fitfile(grb)
+        download_fitfile(grb, filename)
 
 
 if __name__ == "__main__":

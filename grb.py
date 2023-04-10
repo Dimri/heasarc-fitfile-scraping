@@ -18,4 +18,4 @@ class GRB:
         return row["ra_val"].values[0], row["dec_val"].values[0]
 
     def __str__(self):
-        return f"Name : {self.name} Year : {self.year} RA : {self.ra} DEC : {self.dec}"
+        return f"Name : {self.name} Year : {self.year} RA : {self.ra:.2f} DEC : {self.dec:.2f}"
